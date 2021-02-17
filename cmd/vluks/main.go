@@ -67,6 +67,7 @@ func main() {
 	root.PersistentFlags().BoolP("debug", "v", false, "Enable debug logging")
 
 	root.AddCommand(addKey())
+	root.AddCommand(systemdCryptsetup())
 
 	if err := root.Execute(); err != nil {
 		fmt.Println(err)
