@@ -38,6 +38,8 @@ func systemdCryptsetup() *cobra.Command {
 			for i, line := range crypttabLines {
 				logger = logger.With().Int("line", i).Logger()
 
+				// TODO: Add debug logging to cryptsetup
+
 				if line == "" {
 					continue
 				}
@@ -61,7 +63,7 @@ func systemdCryptsetup() *cobra.Command {
 					continue
 				}
 
-				// TODO: pass logger into backend functions
+				// TODO: Pass the logger into backend functions
 				keyFilePath, err := backendCreateKeyfile(
 					deviceFile, fmt.Sprintf("/run/cryptsetup-keys.d/%s.key", deviceName), vault.Logical(),
 				)
