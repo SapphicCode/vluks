@@ -18,6 +18,7 @@ func systemdCryptsetup() *cobra.Command {
 		Hidden: true,
 
 		Run: func(command *cobra.Command, args []string) {
+			// TODO: Elevate /etc/crypttab parsing into backend.
 			logger := getLogger(command)
 			vault, err := getVault()
 			if err != nil {
@@ -63,15 +64,14 @@ func systemdCryptsetup() *cobra.Command {
 					continue
 				}
 
-				// TODO: Pass the logger into backend functions
-				keyFilePath, err := backendCreateKeyfile(
-					deviceFile, fmt.Sprintf("/run/cryptsetup-keys.d/%s.key", deviceName), vault.Logical(),
-				)
-				if err != nil {
-					logger.Error().Err(err).Str("name", deviceName).Msg("Unable to create keyfile for device.")
-				} else {
-					logger.Info().Str("keyfile", keyFilePath).Msg("Keyfile created for device.")
+				be := &backend{
+					Logger: logger,
+					Vault:  vault,
 				}
+				keyFilePath := be.CreateKeyfile(
+					deviceFile, fmt.Sprintf("/run/cryptsetup-keys.d/%s.key", deviceName),
+				)
+				logger.Info().Str("keyfilePath", keyFilePath).Msg("Keyfile created for device.")
 			}
 		},
 	}

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,36 +10,47 @@ import (
 	"path"
 
 	"github.com/hashicorp/vault/api"
+	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 )
 
-func backendReadHeader(device string) (map[string]interface{}, error) {
+type backend struct {
+	Logger zerolog.Logger
+	Vault  *api.Client
+}
+
+func (be *backend) ReadHeader(device string) map[string]interface{} {
+	logger := be.Logger.With().Str("device", device).Logger()
+
 	// open device file
 	file, err := os.Open(device)
 	if err != nil {
-		return nil, err
+		return nil
 	}
+	logger.Debug().Msg("Device opened.")
 
 	// seek into header
 	file.Seek(0x1000, io.SeekStart)
+	logger.Debug().Msg("Seeked into header.")
 
 	// read JSON
 	header := make(map[string]interface{})
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&header)
 	if err != nil {
-		return header, err
+		be.Logger.Fatal().Err(err).Msg("Error reading JSON header.")
+		return nil
 	}
+	logger.Debug().Interface("header", header).Msg("Header successfully read.")
 
-	return header, nil
+	return header
 }
 
-func backendCreateKeyfile(device, filePath string, vault *api.Logical) (string, error) {
+func (be *backend) CreateKeyfile(device, filePath string) string {
+	logger := be.Logger.With().Str("device", device).Logger()
+
 	// read header
-	header, err := backendReadHeader(device)
-	if err != nil {
-		return "", err
-	}
+	header := be.ReadHeader(device)
 
 	// read tokens
 	tokens := header["tokens"].(map[string]interface{})
@@ -53,22 +63,22 @@ func backendCreateKeyfile(device, filePath string, vault *api.Logical) (string, 
 		ciphertext = token["ciphertext"].(string)
 	}
 	if ciphertext == "" {
-		return "", errors.New("vluks: no available token in header")
+		logger.Fatal().Msg("No available token found in header.")
 	}
 
 	// decrypt ciphertext
 	vaultMount := viper.GetString("vault.mount")
 	vaultKey := viper.GetString("vault.key")
-	secret, err := vault.Write(fmt.Sprintf("%s/decrypt/%s", vaultMount, vaultKey), map[string]interface{}{
+	secret, err := be.Vault.Logical().Write(fmt.Sprintf("%s/decrypt/%s", vaultMount, vaultKey), map[string]interface{}{
 		"ciphertext": ciphertext,
 	})
 	if err != nil {
-		return "", err
+		logger.Fatal().Err(err).Msg("Vault could not decode ciphertext.")
 	}
 	base64KeyData := secret.Data["plaintext"].(string)
 	keyData, err := base64.StdEncoding.DecodeString(base64KeyData)
 	if err != nil {
-		return "", err
+		logger.Panic().Err(err).Msg("Error decoding Vault base64?")
 	}
 
 	// create keyfile
@@ -76,29 +86,30 @@ func backendCreateKeyfile(device, filePath string, vault *api.Logical) (string, 
 	if filePath == "" {
 		file, err = ioutil.TempFile("", "vluks")
 		if err != nil {
-			return "", err
+			logger.Fatal().Err(err).Msg("Error creating temporary keyfile.")
 		}
 	} else {
+		logger := logger.With().Str("keyfilePath", filePath).Logger()
 		err = os.MkdirAll(path.Dir(filePath), 0700)
 		if err != nil {
-			return "", err
+			logger.Fatal().Err(err).Msg("Error creating path for keyfile.")
 		}
 		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_EXCL, 0600)
 		if err != nil {
-			return "", err
+			logger.Fatal().Err(err).Msg("Error opening custom keyfile.")
 		}
 	}
 
 	// write keyfile
 	_, err = file.Write(keyData)
 	if err != nil {
-		return "", err
+		logger.Fatal().Err(err).Msg("Error writing keyfile.")
 	}
 
 	// close keyfile
 	if err = file.Close(); err != nil {
-		return "", err
+		logger.Panic().Err(err).Msg("Error closing keyfile?")
 	}
 
-	return file.Name(), nil
+	return file.Name()
 }
