@@ -33,5 +33,6 @@ changelog:
 blobs:
   - provider: s3
     endpoint: https://s3.us-west-001.backblazeb2.com
+    region: us-west-001
     bucket: SapphicCode
     folder: release/{{.ProjectName}}/{{.Tag}}

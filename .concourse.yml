@@ -1,0 +1,33 @@
+resources:
+  - name: vluks
+    icon: github
+    type: git
+    source:
+      uri: https://github.com/SapphicCode/vluks.git
+      branch: mistress
+      fetch_tags: yes
+      tag_filter: v*
+
+jobs:
+  - name: release
+    plan:
+      - get: vluks
+        trigger: yes
+      - task: goreleaser
+        config:
+          inputs:
+            - name: vluks
+              path: .
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: docker.io/goreleaser/goreleaser
+          params:
+            GITHUB_TOKEN: ((cassandra/github.token))
+            AWS_ACCESS_KEY_ID: ((cassandra/backblaze.id))
+            AWS_SECRET_ACCESS_KEY: ((cassandra/backblaze.key))
+          run:
+            path: goreleaser
+            args:
+              - release
