@@ -1,0 +1,37 @@
+# This is an example .goreleaser.yml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+project_name: vluks
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod download
+    # you may remove this if you don't need go generate
+    - go generate ./...
+builds:
+  - id: vluks
+    main: ./cmd/vluks/
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+archives:
+  - id: tar
+    builds:
+      - vluks
+    format: tar.gz
+    name_template: "{{.ProjectName}}_{{.Os}}_{{.Arch}}"
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{.Tag}}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+blobs:
+  - provider: s3
+    endpoint: https://s3.us-west-001.backblazeb2.com
+    bucket: SapphicCode
+    folder: release/{{.ProjectName}}/{{.Tag}}
