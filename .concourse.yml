@@ -2,21 +2,51 @@ resources:
   - name: vluks
     icon: github
     type: git
-    source:
+    source: &vluks
       uri: https://github.com/SapphicCode/vluks.git
       branch: mistress
+
+  - name: vluks-versions
+    icon: github
+    type: git
+    source:
+      <<: *vluks
       fetch_tags: yes
       tag_filter: v*
 
 jobs:
-  - name: release
+  - name: nightly
     plan:
       - get: vluks
+        trigger: yes
+      - task: build
+        config:
+          inputs:
+            - name: vluks
+              path: .
+          outputs:
+            - name: build
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: docker.io/library/golang
+              tag: alpine
+          run:
+            path: go
+            args:
+              - build
+              - -o=build
+              - ./cmd/...
+
+  - name: release
+    plan:
+      - get: vluks-versions
         trigger: yes
       - task: goreleaser
         config:
           inputs:
-            - name: vluks
+            - name: vluks-versions
               path: .
           platform: linux
           image_resource:
