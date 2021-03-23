@@ -1,4 +1,4 @@
-package main
+package luks
 
 import (
 	"encoding/base64"
@@ -14,12 +14,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-type backend struct {
+// Backend provides a backend to LUKS v2 and cryptsetup
+type Backend struct {
 	Logger zerolog.Logger
 	Vault  *api.Client
 }
 
-func (be *backend) ReadHeader(device string) map[string]interface{} {
+// ReadHeader returns a map of the LUKS v2 JSON header
+// Useful for parsing the tokens, keyfiles, etc
+func (be *Backend) ReadHeader(device string) map[string]interface{} {
 	logger := be.Logger.With().Str("device", device).Logger()
 
 	// open device file
@@ -46,7 +49,9 @@ func (be *backend) ReadHeader(device string) map[string]interface{} {
 	return header
 }
 
-func (be *backend) CreateKeyfile(device, filePath string) string {
+// CreateKeyfile creates a Vault-encrypted LUKS keyfile and adds it to LUKS
+// This function uses cryptsetup and requires user interaction
+func (be *Backend) CreateKeyfile(device, filePath string) string {
 	logger := be.Logger.With().Str("device", device).Logger()
 
 	// read header

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/SapphicCode/vluks/internal/luks"
 	"github.com/spf13/cobra"
 )
 
@@ -64,11 +65,11 @@ func systemdCryptsetup() *cobra.Command {
 					continue
 				}
 
-				be := &backend{
+				backend := &luks.Backend{
 					Logger: logger,
 					Vault:  vault,
 				}
-				keyFilePath := be.CreateKeyfile(
+				keyFilePath := backend.CreateKeyfile(
 					deviceFile, fmt.Sprintf("/run/cryptsetup-keys.d/%s.key", deviceName),
 				)
 				logger.Info().Str("keyfilePath", keyFilePath).Msg("Keyfile created for device.")
