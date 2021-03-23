@@ -51,6 +51,7 @@ func (be *Backend) ReadHeader(device string) map[string]interface{} {
 
 // CreateKeyfile creates a Vault-encrypted LUKS keyfile and adds it to LUKS
 // This function uses cryptsetup and requires user interaction
+// Returns the keyfile path, clean up is left to the caller
 func (be *Backend) CreateKeyfile(device, filePath string) string {
 	logger := be.Logger.With().Str("device", device).Logger()
 
