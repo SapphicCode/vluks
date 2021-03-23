@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/hashicorp/vault/api"
 	"github.com/rs/zerolog"
@@ -118,4 +119,65 @@ func (be *Backend) CreateKeyfile(device, filePath string) string {
 	}
 
 	return file.Name()
+}
+
+// ReadCrypttab parses /etc/crypttab.
+// Returns a list of potential keyfile=none devices.
+func (be *Backend) ReadCrypttab(crypttab string) []string {
+	logger := be.Logger.With().Str("module", "crypttab").Str("crypttab", crypttab).Logger()
+
+	data, err := ioutil.ReadFile(crypttab)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Unable to read crypttab.")
+	}
+
+	devices := parseCrypttab(string(data))
+
+	// we have a device map, now what? well...
+	systemdElegibleDevices := make([]string, 0, 8)
+	for _, device := range devices {
+		switch device[2] {
+		case "", "none":
+			systemdElegibleDevices = append(systemdElegibleDevices, device[0])
+		}
+	}
+
+	return systemdElegibleDevices
+}
+
+func parseCrypttab(crypttab string) [][]string {
+	devices := make([][]string, 0, 8)
+parser:
+	for _, line := range strings.Split(crypttab, "\n") {
+		line := strings.TrimSpace(line)
+		if line == "" {
+			continue parser
+		}
+
+		device := make([]string, 4)
+		field := 0
+		readingWhitespace := false
+		for _, char := range line {
+			// ignore comments
+			if char == '#' {
+				continue parser
+			}
+			// find out if we're reading whitespace
+			if char == ' ' || char == '\t' {
+				// if this is our first encountered whitespace, shift the field (up to 4)
+				if !readingWhitespace && field < 3 {
+					field++
+				}
+				readingWhitespace = true
+			} else {
+				readingWhitespace = false
+			}
+			// if we're still not reading whitespace, append the field
+			if !readingWhitespace {
+				device[field] += string(char)
+			}
+		}
+		devices = append(devices, device)
+	}
+	return devices
 }
