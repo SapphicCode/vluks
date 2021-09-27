@@ -1,4 +1,4 @@
-package luks
+package vluks
 
 import (
 	"encoding/base64"
@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Backend provides a backend to LUKS v2 and cryptsetup
+// Backend provides a backend to LUKSv2 operations and Vault
 type Backend struct {
 	Logger zerolog.Logger
 	Vault  *api.Client

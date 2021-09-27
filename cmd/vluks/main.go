@@ -72,6 +72,7 @@ func main() {
 	if version != "" {
 		root.AddCommand(versionCommand)
 	}
+	root.AddCommand(licenseCommand)
 
 	if err := root.Execute(); err != nil {
 		fmt.Println(err)

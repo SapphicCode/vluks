@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/SapphicCode/vluks/internal/luks"
+	"github.com/SapphicCode/vluks/vluks"
 	"github.com/spf13/cobra"
 )
 
@@ -65,7 +65,7 @@ func systemdCryptsetup() *cobra.Command {
 					continue
 				}
 
-				backend := &luks.Backend{
+				backend := &vluks.Backend{
 					Logger: logger,
 					Vault:  vault,
 				}
